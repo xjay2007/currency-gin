@@ -7,21 +7,8 @@ import (
 	"encoding/json"
 )
 
-type FormatInfo struct {
-	Format string `json:"format"`
-	FormatNote string `json:"formatNote"`
-	Extension string `json:"extension"`
-	Url string `json:"url"`
-	FileSize string `json:"fileSize"`
-}
+type Dict utils.D
 
-type VideoInfo struct {
-	Id string `json:"id"`
-	Title string `json:"title"`
-	Thumbnail string `json:"thumbnail"`
-	WebPageUrl string `json:"webPageUrl"`
-	Formats []FormatInfo `json:"formats"`
-}
 
 type YoutubeController struct {
 	gin.Context
@@ -46,8 +33,9 @@ func (ctrl *YoutubeController) Handle(c *gin.Context) {
 
 	switch method {
 	case "url":
-		success, data = ctrl.parseVideoInfo(url, targetExt)
-
+		success, data = ctrl.parseVideoInfo(url, targetExt, false)
+	case "url2":
+		success, data = ctrl.parseVideoInfo(url, targetExt, true)
 	case "download":
 	//	url := c.GetString("url")
 	//	formatCode := c.GetString("formatCode")
@@ -62,18 +50,19 @@ func (ctrl *YoutubeController) Handle(c *gin.Context) {
 		break
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusOK, Dict{
 		"success": success,
 		"data":    data,
 	})
 }
 
-func (ctrl *YoutubeController) parseVideoInfo(url string, targetExt string) (bool, interface{}) {
+func (ctrl *YoutubeController) parseVideoInfo(url string, targetExt string, isShort bool) (bool, interface{}) {
 	success, resultStr := utils.ExecCmd("youtube-dl", "--dump-json", "--no-warnings", url)
 
-	resultMap := map[string]interface{} {}
+	resultMap := Dict{}
 	if !success {
-		return success, resultStr
+		resultMap["result"] = resultStr
+		return success, resultMap
 	}
 	err := json.Unmarshal([]byte(resultStr), &resultMap)
 	if err != nil {
@@ -81,43 +70,85 @@ func (ctrl *YoutubeController) parseVideoInfo(url string, targetExt string) (boo
 		resultMap["result"] = err.Error()
 		return false, resultMap
 	}
-	videoInfo := ctrl.parseVideoInfoByResultMap(resultMap, targetExt)
+	var videoInfo interface{}
+	if isShort {
+		videoInfo = ctrl.parseShortVideoInfoByResultMap(resultMap, targetExt)
+	} else {
+		videoInfo = ctrl.parseVideoInfoByResultMap(resultMap, targetExt)
+	}
 	return success, videoInfo
 }
 
 
-func (ctrl *YoutubeController) parseVideoInfoByResultMap(resultMap map[string]interface{}, targetExt string) VideoInfo {
-	info := VideoInfo{}
-	info.Id = resultMap["id"].(string)
-	info.Title = resultMap["title"].(string)
-	info.Thumbnail = resultMap["thumbnail"].(string)
-	info.WebPageUrl = resultMap["webpage_url"].(string)
+func (ctrl *YoutubeController) parseVideoInfoByResultMap(resultMap Dict, targetExt string) Dict {
+	info := Dict{
+		"id":			resultMap["id"],
+		"title":		resultMap["title"],
+		"thumbnail":	resultMap["thumbnail"],
+		"webPageUrl":	resultMap["webpage_url"],
+	}
 	formats := resultMap["formats"].([]interface{})
-	var formatList []FormatInfo
+	var formatList []Dict
 	for _, value := range formats {
 		formatMap := value.(map[string]interface{})
-		formatNote := formatMap["format_note"].(string)
-		utils.Info("formatNote:", formatNote)
 
-		format := FormatInfo{
-			Format:     formatMap["format"].(string),
-			FormatNote: formatNote,
-			Extension:  formatMap["ext"].(string),
-			Url:        formatMap["url"].(string),
-		}
+		format := formatMap["format"]
+		formatNote := formatMap["format_note"]
+		extension := formatMap["ext"]
+		url := formatMap["url"]
 		fileSize := formatMap["filesize"]
 		if fileSize != nil {
-			format.FileSize = utils.FormatFileSize(fileSize.(float64))
+			fileSize = utils.FormatFileSize(fileSize.(float64))
 		}
+
+		formatInfo := Dict{
+			"format":     	format,
+			"formatNote": 	formatNote,
+			"extension":  	extension,
+			"url":        	url,
+			"fileSize":		fileSize,
+		}
+
 		insert := true
 		if targetExt != "" {
-			insert = targetExt == format.Extension
+			insert = targetExt == extension
 		}
 		if insert {
-			formatList = append(formatList, format)
+			formatList = append(formatList, formatInfo)
 		}
 	}
-	info.Formats = formatList
+	info["formats"] = formatList
+	return info
+}
+
+
+func (ctrl *YoutubeController) parseShortVideoInfoByResultMap(resultMap Dict, targetExt string) Dict {
+	info := Dict{}
+	info["title"] = resultMap["title"].(string)
+	formats := resultMap["formats"].([]interface{})
+	totalFormatMap := map[string]string{}
+	for _, value := range formats {
+		formatMap := value.(map[string]interface{})
+
+		fileSize := formatMap["filesize"]
+		if fileSize == nil {
+			continue
+		}
+		fileSize = utils.FormatFileSize(fileSize.(float64))
+		utils.Info("fileSize:", fileSize)
+
+		insert := true
+		if targetExt != "" {
+			ext := formatMap["ext"].(string)
+			insert = targetExt == ext
+		}
+		if !insert {
+			continue
+		}
+		url := formatMap["url"].(string)
+		totalFormatMap[fileSize.(string)] = url
+	}
+	info["formatMap"] = totalFormatMap
 	return info
 }
 
