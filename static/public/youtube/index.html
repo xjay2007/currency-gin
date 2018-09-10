@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Title</title>
+</head>
+<style>
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #dddddd;
+    }
+</style>
+<body>
+
+<br>
+<div>
+    YouTube URL:
+</div>
+<br>
+<div>
+    <input
+            id="url" type="url" name="url"
+            style="width: 80%; height: 30px; font-size: medium"
+            value="https://www.youtube.com/watch?v=K9G9lfA8fa8">
+    <button
+            onclick='document.getElementById("url").value = ""'
+            style="border-style: ridge; width: 30px; height: 30px;"
+    >
+        X
+    </button>
+</div>
+<br>
+<button
+        onclick="analyseUrl()"
+        style="border-style: ridge; width: 30%; height: 30px;"
+>
+    Analyse URL
+</button>
+
+<p id="list"></p>
+
+<p id="status"></p>
+
+<script>
+    let isLoading = false;
+    let videoInfo = {};
+    function analyseUrl() {
+        if (isLoading) {
+            echoStatus("isLoading="+isLoading);
+            return;
+        }
+
+        let input = document.getElementById("url");
+        let url = input.value.toString();
+        url = url.trim();
+        if (url.length === 0) {
+            echoStatus("url is empty");
+            return;
+        }
+
+        isLoading = true;
+        let request = new XMLHttpRequest();
+        let requestUrl = "/api/youtube?url=" + url + "&ext=mp4";
+        request.open("POST", requestUrl, true);
+        // request.setRequestHeader("Content-type", "application/json");
+        request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        request.onreadystatechange = function() {
+            if (this.readyState == 4) {
+                if (this.status == 200) {
+                    var response = JSON.parse(this.responseText);
+                    var success = response["success"];
+                    if (success) {
+                        videoInfo = response["data"];
+                        updateListView();
+                        echoStatus("success");
+                    } else {
+                        echoStatus(this.responseText);
+                    }
+                } else {
+                    echoStatus("request fail");
+                }
+                isLoading = false;
+            }
+        }
+        echoStatus("requesting url:" + requestUrl);
+        clearList();
+        request.send();
+        // var response = JSON.parse(request.responseText);
+        // echoStatus(response)
+
+        isLoading = false;
+    }
+    function echoStatus(str) {
+        document.getElementById("status").innerHTML = str;
+    }
+
+    let tableTitle = "<table>\n" +
+            "    <tr>\n" +
+            // "        <th>Format Code</th>\n" +
+            "        <th>Format</th>\n" +
+            "        <th>Ext.</th>\n" +
+            "        <th>Url</th>\n" +
+            "        <th>FileSize</th>\n" +
+            "    </tr>";
+    let tableEnd = "</table>";
+
+    function updateListView() {
+        let str = tableTitle;
+        let formatList = videoInfo["formats"];
+        let title = videoInfo["title"];
+        for (let idx in formatList) {
+            let data = formatList[idx];
+            console.log(idx, data);
+
+            let url = data["url"];
+            let extension = data["extension"];
+            if (extension == "mp4") {
+                str += "<tr>";
+                str += ("<td>" + data["formatNote"] + "</td>");
+                str += ("<td>" + extension + "</td>");
+                var fileName = title + "." + extension;
+                str += (`<td><a data-type="MP4" href="${url}" download="${fileName}">Go</a></td>`);
+                str += ("<td>" + data["fileSize"] + "</td>");
+                str += "</tr>";
+            }
+        }
+        str += tableEnd;
+        document.getElementById("list").innerHTML = str;
+    }
+
+    function clearList() {
+        document.getElementById("list").innerHTML = tableTitle + tableEnd;
+    }
+
+</script>
+
+</body>
+</html>

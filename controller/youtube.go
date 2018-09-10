@@ -29,6 +29,9 @@ type YoutubeController struct {
 
 func (ctrl *YoutubeController) Handle(c *gin.Context) {
 	method := c.Param("method")
+	if method == "" {
+		method = "url"
+	}
 	utils.Info("youtube y2bMethod:", method, " request method:", c.Request.Method)
 	url := c.Query("url")
 	targetExt := c.Query("ext")

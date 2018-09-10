@@ -26,8 +26,11 @@ func main() {
 	r.GET("/api/convert/:fromUnit", new(controller.ConverterController).Handle)
 	r.GET("/api/convert/:fromUnit/:toUnit", new(controller.ConverterController).Handle)
 
+	r.GET("/api/youtube", new(controller.YoutubeController).Handle)
+	r.POST("/api/youtube", new(controller.YoutubeController).Handle)
 	r.GET("/api/youtube/:method", new(controller.YoutubeController).Handle)
 	r.POST("/api/youtube/:method", new(controller.YoutubeController).Handle)
+	r.Static("/youtube", "./static/public/youtube")
 
 	//r.Run() // listen and serve on 0.0.0.0:8080
 
