@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"currency-gin/utils"
+	"fmt"
 )
 
 type ConverterController struct {
@@ -52,7 +53,7 @@ func (ctrl *ConverterController) Handle(c *gin.Context) {
 	rate := resultMap[key]["val"].(float64)
 
 	c.JSON(http.StatusOK, gin.H{
-		"rate":		float32(rate),
+		"rate":		fmt.Sprintf("%.6f", rate),
 		"from":		fromUnit,
 		"to":		toUnit,
 	})

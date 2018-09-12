@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 )
 
-type Dict utils.D
+type Dict utils.Dict
 
 
 type YoutubeController struct {

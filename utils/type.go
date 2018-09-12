@@ -1,4 +1,4 @@
 package utils
 
 
-type D map[string]interface{}
+type Dict map[string]interface{}
