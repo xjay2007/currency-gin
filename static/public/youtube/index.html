@@ -72,7 +72,7 @@
 
         isLoading = true;
         let request = new XMLHttpRequest();
-        let requestUrl = "/api/youtube?url=" + url + "&ext=mp4";
+        let requestUrl = "/api/youtube?ext=mp4&url=" + url;
         request.open("POST", requestUrl, true);
         // request.setRequestHeader("Content-type", "application/json");
         request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
