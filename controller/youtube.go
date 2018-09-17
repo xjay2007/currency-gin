@@ -98,8 +98,9 @@ func (ctrl *YoutubeController) parseVideoInfoByResultMap(resultMap Dict, targetE
 		url := formatMap["url"]
 		fileSize := formatMap["filesize"]
 		if fileSize != nil {
-			fileSize = utils.FormatFileSize(fileSize.(float64))
+			fileSize = utils.FormatFileSize(int64(fileSize.(float64)))
 		}
+		resolution := formatMap["resolution"]
 
 		formatInfo := Dict{
 			"format":     	format,
@@ -107,6 +108,7 @@ func (ctrl *YoutubeController) parseVideoInfoByResultMap(resultMap Dict, targetE
 			"extension":  	extension,
 			"url":        	url,
 			"fileSize":		fileSize,
+			"resolution":	resolution,
 		}
 
 		insert := true
@@ -130,23 +132,37 @@ func (ctrl *YoutubeController) parseShortVideoInfoByResultMap(resultMap Dict, ta
 	for _, value := range formats {
 		formatMap := value.(map[string]interface{})
 
-		fileSize := formatMap["filesize"]
-		if fileSize == nil {
-			continue
+		resolution := formatMap["resolution"]
+		if resolution == nil {
+			resolution = formatMap["format_note"]
 		}
-		fileSize = utils.FormatFileSize(fileSize.(float64))
-		utils.Info("fileSize:", fileSize)
+		var key = resolution.(string)
 
 		insert := true
+		ext := formatMap["ext"].(string)
 		if targetExt != "" {
-			ext := formatMap["ext"].(string)
 			insert = targetExt == ext
 		}
 		if !insert {
 			continue
 		}
+
+		key = key + " " + ext
+
+		fileSize := formatMap["filesize"]
+		if fileSize == nil {
+			fileSize = -1.0
+		}
+		fileSizeStr := utils.FormatFileSize(int64(fileSize.(float64)))
+		key = key + " " + fileSizeStr
+
+		acodec := formatMap["acodec"]
+		utils.Info("acodec:", acodec)
+		if acodec == "none" {
+			key = key + "(Video Only)"
+		}
 		url := formatMap["url"].(string)
-		totalFormatMap[fileSize.(string)] = url
+		totalFormatMap[key] = url
 	}
 	info["formatMap"] = totalFormatMap
 	return info

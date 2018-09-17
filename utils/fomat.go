@@ -2,8 +2,12 @@ package utils
 
 import "fmt"
 
-func FormatFileSize(size float64) string {
-	if size <= 0 {
+func FormatFileSize(s int64) string {
+	size := float64(s)
+	if size < 0 {
+		return "Unknown"
+	}
+	if size == 0 {
 		return "0B"
 	}
 	if size < 1024 {
