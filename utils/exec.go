@@ -15,6 +15,6 @@ func ExecCmd(name string, arg ...string) (bool, string) {
 		Error(err)
 		return false, outStr
 	}
-	Info(outStr)
+	//Info(outStr)
 	return true, outStr
 }
